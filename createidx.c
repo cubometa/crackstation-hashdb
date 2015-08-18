@@ -2,40 +2,73 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "hash_md5.h"
+#define WARN(x) write(2,(x),strlen(x))
+#define TYPE_NONE 0
+#define TYPE_HASH 1
+#define TYPE_CIPHER 2
 
-int nextm4(uint64_t i) {
-	if ((i&3)==0) return i;
-	else return i+(4-i%4);
-}
+/*
+Tue, Aug 18, 2015
+(c) 2015 Ale Navarro (cubometa.com)
+*/
 
 int main(int argc, char** argv) {
-if (argc < 2) exit(1);
-
-uint64_t len;
-for (len = 0; argv[1][len] != '\0'; ++len);
-
-uint64_t nlen = nextm4(len)/4;
-uint32_t thedata[nlen];
-
-int rpos = 0;
-for (int pos = 0; pos < len; ++pos) {
-	if (pos % 4 == 0) {
-		thedata[rpos] = argv[1][pos] << 24;
-	} else if (pos % 4 == 1) {
-		thedata[rpos] |= argv[1][pos] << 16;
-	} else if (pos % 4 == 2) {
-		thedata[rpos] |= argv[1][pos] << 8;
-	} else {
-		thedata[rpos] |= argv[1][pos];
-		++rpos;
-	}
+if (argc < 2) {
+	WARN("Not enough arguments supplied.\nusage: createidx hashalgo infile outfile\n");
+	exit(1);
 }
 
-uint32_t thehash[4];
-hash_md5(len,thedata,thehash);
+/* Check if files exist */
+
+char algotype = TYPE_NONE;
+int optpos = 0;
+char *hashalgos[9] = {"-md2","-md4","-md5","-sha1","-sha224","-sha256","-sha384","-sha512","-rmd160"};
+for (int i=0; i<10; ++i) { if (strcmp(&hashalgos[i][1],argv[1])==0) { algotype = TYPE_HASH; optpos = i; break; } }
+if (strcmp("ripemd160",argv[1])==0) { algotype = TYPE_HASH; optpos = 8; }
+
+char *cipheralgos[3] = {"-rc4","-base64","-bf"};
+for (int i=0; i<1; ++i) { if(strcmp(&cipheralgos[i][1],argv[1])==0) { algotype = TYPE_CIPHER; optpos = i; break; } }
+if (strcmp("blowfish",argv[1])==0) { algotype = TYPE_CIPHER; optpos = 2; }
+
+if (algotype == TYPE_NONE) {
+	WARN("The specified algorithm does not exist.\n");
+	WARN("Supported algorithms: md2, md4, md5, sha1, sha224, sha256, sha384, sha512, rmd160 (ripemd160), rc4, base64, bf (blowfish).\n");
+	exit(1);
+}
+
+int thepipe[2];
+pipe(thepipe);
+
+int k = fork();
+if (k == 0) {
+	int secondpipe[2];
+	pipe(secondpipe);
+	write(secondpipe[1],argv[2],strlen(argv[2]));
+	close(secondpipe[1]);
+	close(thepipe[0]);
+	close(1);
+	dup(thepipe[1]);
+	close(0);
+	dup(secondpipe[0]);
+	
+	if (algotype == TYPE_HASH) {
+		execlp("openssl","openssl","dgst",hashalgos[optpos],"-binary",(char*)NULL);
+	} else if (algotype == TYPE_CIPHER) {
+		execlp("openssl","openssl","enc",cipheralgos[optpos],"-nosalt",(char*)NULL);
+	}
+	
+	exit(0);
+}
+
+close(thepipe[1]);
+while (waitpid(-1,NULL,0)>0);
+
+char result[1024];
+int canread = read(thepipe[0],result,1024);
+if (canread < 0) exit(1);
+
 char buf[256];
-sprintf(buf, "%llu, %llu: %x %x %x %x\n", len, nlen, thehash[0], thehash[1], thehash[2], thehash[3]);
+sprintf(buf, "%s", result);
 write(1,buf,strlen(buf));
-exit (0);
+exit(0);
 }
