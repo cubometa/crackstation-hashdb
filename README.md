@@ -22,8 +22,8 @@ There are three components to this system:
 
 The system is split up like this because PHP provides easy access to many
 different types of hash functions, but is too slow to sort large indexes in
-a reasonable amount of time. We are planning to re-write components #1 and #3 in
-C or C++.
+a reasonable amount of time. ~~We are planning to re-write components #1 and #3 in
+C or C++.~~ I’m rewriting them in C (or trying, at least).
 
 Indexing a Dictionary
 ---------------------
