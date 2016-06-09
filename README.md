@@ -25,6 +25,14 @@ different types of hash functions, but is too slow to sort large indexes in
 a reasonable amount of time. ~~We are planning to re-write components #1 and #3 in
 C or C++.~~ I’m rewriting them in C (or trying, at least).
 
+Building and Testing
+--------------------
+
+The PHP scripts to not need to be built. To build the C programs, run `make`.
+
+To run the tests, just run `make test`, and then clean up the files the tests
+created with `make testclean`.
+
 Indexing a Dictionary
 ---------------------
 
@@ -36,30 +44,28 @@ First, create the MD5 and SHA1 indexes:
     $ php createidx.php md5 words.txt words-md5.idx
     $ php createidx.php sha1 words.txt words-sha1.idx
 
-Next, build the sortidx program and run it on the indexes.
+Next, use the sortidx program to sort the indexes:
 
-    $ make
-    $ ./sortidx -r 100 words-md5.idx
-    $ ./sortidx -r 100 words-sha256.idx
+    $ ./sortidx -r 256 words-md5.idx
+    $ ./sortidx -r 256 words-sha256.idx
 
 The -r parameter is the maximum amount of memory sortidx is allowed to use in
-MiB. The more memory you let it use, the faster it will go.
+MiB. The more memory you let it use, the faster it will go. Give it as much as
+your system will allow.
 
-You now have everything you need to crack MD5 and SHA1 hashes.
+You now have everything you need to crack MD5 and SHA1 hashes quickly.
 
 Cracking Hashes
 ---------------
 
 Once you have generated and sorted the index, you can use the LookupTable class
-to crack hashes. See test.php for an example of how to use it.
+to crack hashes. See test/test.php for an example of how to use it.
 
 Adding Words
 ------------
 
 Once a wordlist has been indexed, you can not modify the wordlist file without
 breaking the indexes. Appending to the wordlist is safe in that it will not
-break the indexes, but the words you append (obviously) won't be indexed,
-unless you re-generate the index. 
-
-There is currently no way to add words to an index without re-generating the
-entire index.
+break the indexes, but the words you append  won't be indexed, unless you
+re-generate the index. There is currently no way to add words to an index
+without re-generating the entire index.
